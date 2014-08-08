@@ -9,6 +9,7 @@ import org.junit.*;
 import de.woerteler.fibheap.FibHeap.FibNode;
 
 /**
+ * Various tests that cover all the heap's functionality.
  *
  * @author Leo Woerteler
  */
@@ -16,7 +17,7 @@ public class FibHeapTest {
   /** Tests sorting integers using heap-sort. */
   @Test
   public void sortTest() {
-    final FibHeap<String, Integer> heap = FibHeap.newHeap();
+    final FibHeap<String, Integer> heap = FibHeap.newComparableHeap();
 
     final List<Integer> rand = new ArrayList<>(1000);
     for(int i = 0; i < 100000; i++) {
@@ -38,7 +39,7 @@ public class FibHeapTest {
   /** Tests decreasing keys. */
   @Test
   public void cascadeRoot() {
-    final FibHeap<String, Integer> heap = FibHeap.newHeap();
+    final FibHeap<String, Integer> heap = FibHeap.newComparableHeap();
     final List<FibNode<String, Integer>> nodes = new ArrayList<>();
     for(int i = 0; i <= 4; i++) {
       nodes.add(heap.insert("v" + i, i));
@@ -62,7 +63,7 @@ public class FibHeapTest {
   /** Tests decreasing keys so that a cascading cut is triggered. */
   @Test
   public void cascadingCut() {
-    final FibHeap<String, Integer> heap = FibHeap.newHeap();
+    final FibHeap<String, Integer> heap = FibHeap.newComparableHeap();
     final List<FibNode<String, Integer>> nodes = new ArrayList<>();
     for(int i = 0; i < 9; i++) {
       nodes.add(heap.insert("v" + i, i));
@@ -88,7 +89,7 @@ public class FibHeapTest {
   /** Tests moving an inner node to the root list. */
   @Test
   public void deleteNotFirst() {
-    final FibHeap<String, Integer> heap = FibHeap.newHeap();
+    final FibHeap<String, Integer> heap = FibHeap.newComparableHeap();
     final List<FibNode<String, Integer>> nodes = new ArrayList<>();
     for(int i = 0; i < 9; i++) {
       nodes.add(heap.insert("v" + i, i));
@@ -109,7 +110,7 @@ public class FibHeapTest {
   /** Tests decreasing keys that don't change the minimum. */
   @Test
   public void decreaseMid() {
-    final FibHeap<String, Integer> heap = FibHeap.newHeap();
+    final FibHeap<String, Integer> heap = FibHeap.newComparableHeap();
     @SuppressWarnings({"unchecked"})
     final FibNode<String, Integer>[] v = new FibNode[]{
         heap.insert("v0", 0),
@@ -134,7 +135,7 @@ public class FibHeapTest {
   /** Tests the heap's error conditions. */
   @Test
   public void errorConditions() {
-    final FibHeap<String, Integer> heap = FibHeap.newHeap();
+    final FibHeap<String, Integer> heap = FibHeap.newComparableHeap();
     final FibNode<String, Integer> v0 = heap.insert("v0", 0);
 
     try {
@@ -151,7 +152,7 @@ public class FibHeapTest {
       // try decreasing the key of an invalid node
       v0.decreaseKey(-1);
       fail();
-    } catch(final IllegalArgumentException e) {
+    } catch(final IllegalStateException e) {
       // expected
     }
 

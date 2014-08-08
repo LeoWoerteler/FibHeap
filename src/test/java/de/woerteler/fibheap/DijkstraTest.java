@@ -15,7 +15,7 @@ import de.woerteler.fibheap.FibHeap.FibNode;
  */
 public class DijkstraTest {
   /** A vertex in a graph. */
-  private static class Vertex {
+  private static final class Vertex {
     /** Vertex ID. */
     private final int id;
     /** Vertex name. */
@@ -50,7 +50,7 @@ public class DijkstraTest {
   }
 
   /** A directed edge in a graph. */
-  private static class Edge {
+  private static final class Edge {
     /** Target vertex. */
     private final Vertex target;
     /** Edge weight. */
@@ -68,7 +68,7 @@ public class DijkstraTest {
   }
 
   /** Data needed during the execution of the algorithm. */
-  private static class VertexData {
+  private static final class VertexData {
     /** Current shortest distance to the vertex. */
     double distance;
     /** List of predecessors. */
@@ -76,7 +76,7 @@ public class DijkstraTest {
     /** Associated fibonacci heap node. */
     private FibNode<Vertex, Double> fibNode;
     /** Flag for marking a vertex as already processed. */
-    private boolean closed = false;
+    private boolean closed;
 
     /**
      * Constructor.
@@ -96,7 +96,15 @@ public class DijkstraTest {
   private static Map<Vertex, VertexData> dijkstra(final Vertex start) {
     final Map<Vertex, VertexData> dists = new HashMap<>();
 
-    final FibHeap<Vertex, Double> heap = FibHeap.newHeap();
+    final FibHeap<Vertex, Double> heap = FibHeap.newHeap(
+      new Comparator<Double>() {
+        @Override
+        public int compare(final Double o1, final Double o2) {
+          return o1.compareTo(o2);
+        }
+      }
+    );
+
     dists.put(start, new VertexData(heap.insert(start, 0.0)));
 
     while(!heap.isEmpty()) {

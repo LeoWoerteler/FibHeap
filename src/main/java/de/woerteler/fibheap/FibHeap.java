@@ -13,7 +13,7 @@ public final class FibHeap<V, P> {
   private static final Comparator<Comparable<Object>> COMP_COMP =
     new Comparator<Comparable<Object>>() {
       @Override
-      public int compare(Comparable<Object> o1, Comparable<Object> o2) {
+      public int compare(final Comparable<Object> o1, final Comparable<Object> o2) {
         return o1.compareTo(o2);
       }
     };
@@ -27,8 +27,21 @@ public final class FibHeap<V, P> {
    * Constructor taking a comparator for the keys.
    * @param comp comparator
    */
-  public FibHeap(final Comparator<P> comp) {
+  private FibHeap(final Comparator<P> comp) {
     this.comp = comp;
+  }
+
+  /**
+   * Creates a new fibonacci heap where the priorities are ordered according to
+   * the given {@link Comparator}.
+   * @param <V> value type
+   * @param <P> priority type
+   * @param comp comparator for priorities, must be non-{@code null}
+   * @return a new fibonacci heap
+   * @throws NullPointerException if {@code comp} is {@code null}
+   */
+  public static <V, P> FibHeap<V, P> newHeap(final Comparator<P> comp) {
+    return new FibHeap<>(Objects.requireNonNull(comp));
   }
 
   /**
@@ -37,10 +50,10 @@ public final class FibHeap<V, P> {
    * @param <P> priority type
    * @return a new fibonacci heap
    */
-  public static <V, P extends Comparable<P>> FibHeap<V, P> newHeap() {
+  public static <V, P extends Comparable<P>> FibHeap<V, P> newComparableHeap() {
     @SuppressWarnings("unchecked")
-    final FibHeap<V, P> heap = (FibHeap<V, P>) new FibHeap<>(COMP_COMP);
-    return heap;
+    final Comparator<P> comp = (Comparator<P>) COMP_COMP;
+    return new FibHeap<>(comp);
   }
 
   /**
@@ -78,6 +91,7 @@ public final class FibHeap<V, P> {
    * Extracts and returns the value with the smallest key from this heap.
    * <em>O(log n)*</em>
    * @return the value if the heap was not empty, {@code null} otherwise
+   * @throws IllegalStateException if the heap is empty
    */
   public V extractMin() {
     final FibNode<V, P> mn = this.min;
@@ -277,7 +291,7 @@ public final class FibHeap<V, P> {
      * @param key priority
      * @param value value
      */
-    FibNode(final FibHeap<V, P> heap, P key, V value) {
+    FibNode(final FibHeap<V, P> heap, final P key, final V value) {
       this.heap = heap;
       this.key = key;
       this.value = value;
@@ -308,12 +322,14 @@ public final class FibHeap<V, P> {
     }
 
     /**
-     * Decreases this node's key in its heap.
+     * Decreases this node's key in its heap. <em>O(1)*</em>
      * @param newKey new, smaller key
+     * @throws IllegalStateException if the node is no longer contained in its heap
+     * @throws IllegalArgumentException if the new key is greater that the old one
      */
-    public void decreaseKey(P newKey) {
+    public void decreaseKey(final P newKey) {
       if(this.heap == null) {
-        throw new IllegalArgumentException("node is not valid");
+        throw new IllegalStateException("node is not valid");
       }
 
       final Comparator<P> comp = this.heap.comp;

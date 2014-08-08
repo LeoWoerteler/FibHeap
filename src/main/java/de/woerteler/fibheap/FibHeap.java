@@ -9,6 +9,15 @@ import java.util.*;
  * @param <V> value type
  */
 public final class FibHeap<V, P> {
+  /** Comparator for {@link Comparable} types. */
+  private static final Comparator<Comparable<Object>> COMP_COMP =
+    new Comparator<Comparable<Object>>() {
+      @Override
+      public int compare(Comparable<Object> o1, Comparable<Object> o2) {
+        return o1.compareTo(o2);
+      }
+    };
+
   /** Key comparator. */
   private final Comparator<P> comp;
   /** Minimum node, {@code null} if the heap is empty. */
@@ -20,6 +29,18 @@ public final class FibHeap<V, P> {
    */
   public FibHeap(final Comparator<P> comp) {
     this.comp = comp;
+  }
+
+  /**
+   * Creates a new fibonacci heap for priorities that are {@link Comparable}.
+   * @param <V> value type
+   * @param <P> priority type
+   * @return a new fibonacci heap
+   */
+  public static <V, P extends Comparable<P>> FibHeap<V, P> newHeap() {
+    @SuppressWarnings("unchecked")
+    final FibHeap<V, P> heap = (FibHeap<V, P>) new FibHeap<>(COMP_COMP);
+    return heap;
   }
 
   /**
@@ -39,7 +60,7 @@ public final class FibHeap<V, P> {
   public FibNode<V, P> insert(final V v, final P k) {
     final FibNode<V, P> nd = new FibNode<>(this, k, v);
     this.insertIntoRootList(nd);
-    if(nd != this.min && this.comp.compare(nd.priority, this.min.priority) < 0) {
+    if(nd != this.min && this.comp.compare(nd.key, this.min.key) < 0) {
       this.min = nd;
     }
     return nd;
@@ -127,7 +148,7 @@ public final class FibHeap<V, P> {
     for(int i = 0; i <= indent; i++) {
       sb.append("  ");
     }
-    sb.append('(').append(node.priority).append(", ").append(node.value).append(")");
+    sb.append('(').append(node.key).append(", ").append(node.value).append(")");
     if(node.firstChild == null) {
       sb.append("\n");
     } else {
@@ -178,13 +199,25 @@ public final class FibHeap<V, P> {
       int d = curr.degree;
       while(d < degrees.size() && (other = degrees.set(d, null)) != null) {
         // the smaller key goes on top
-        if(comp.compare(curr.priority, other.priority) < 0) {
-          curr.addChild(other);
-        } else {
-          other.addChild(curr);
+        if(comp.compare(other.key, curr.key) < 0) {
+          final FibNode<V, P> temp = curr;
           curr = other;
+          other = temp;
         }
-        d++;
+
+        // add `other` as a child to `curr`
+        other.parent = curr;
+        final FibNode<V, P> fstChild = curr.firstChild;
+        if(fstChild == null) {
+          curr.firstChild = other;
+          other.left = other.right = other;
+        } else {
+          other.left = fstChild;
+          other.right = fstChild.right;
+          fstChild.right.left = other;
+          fstChild.right = other;
+        }
+        curr.degree = ++d;
       }
 
       // insert the new node
@@ -201,7 +234,7 @@ public final class FibHeap<V, P> {
     for(final FibNode<V, P> nd : degrees) {
       if(nd != null) {
         this.insertIntoRootList(nd);
-        if(mn == null || this.comp.compare(nd.priority, mn.priority) < 0) {
+        if(mn == null || this.comp.compare(nd.key, mn.key) < 0) {
           mn = nd;
         }
       }
@@ -220,7 +253,7 @@ public final class FibHeap<V, P> {
     private FibHeap<V, P> heap;
 
     /** Current key. */
-    P priority;
+    P key;
     /** Value. */
     final V value;
 
@@ -241,12 +274,12 @@ public final class FibHeap<V, P> {
     /**
      * Constructor.
      * @param heap heap of this node
-     * @param priority priority
+     * @param key priority
      * @param value value
      */
-    FibNode(final FibHeap<V, P> heap, P priority, V value) {
+    FibNode(final FibHeap<V, P> heap, P key, V value) {
       this.heap = heap;
-      this.priority = priority;
+      this.key = key;
       this.value = value;
     }
 
@@ -254,8 +287,8 @@ public final class FibHeap<V, P> {
      * Getter for this node's current key.
      * @return the key currently associated with this node
      */
-    public P getPriority() {
-      return this.priority;
+    public P getKey() {
+      return this.key;
     }
 
     /**
@@ -284,81 +317,51 @@ public final class FibHeap<V, P> {
       }
 
       final Comparator<P> comp = this.heap.comp;
-      if(comp.compare(newKey, this.priority) > 0) {
+      if(comp.compare(newKey, this.key) > 0) {
         throw new IllegalArgumentException("new key is greater than old one");
       }
 
-      this.priority = newKey;
+      this.key = newKey;
 
-      FibNode<V, P> par = this.parent;
-      if(par != null) {
-        // node is not in the root list
-        if(comp.compare(newKey, par.priority) < 0) {
-          boolean cascade;
-          FibNode<V, P> curr = this;
-          do {
-            // cascading cut
-            cascade = curr.deleteFromParent();
-            this.heap.insertIntoRootList(curr);
-            curr = par;
-            par = curr.parent;
-          } while(cascade);
-        }
+      if(this.parent != null && comp.compare(newKey, this.parent.key) < 0) {
+        FibNode<V, P> curr = this, par = this.parent;
+        do {
+          // delete node from parent
+          if(--par.degree == 0) {
+            par.firstChild = null;
+          } else {
+            if(par.firstChild == curr) {
+              par.firstChild = curr.right;
+            }
+            curr.right.left = curr.left;
+            curr.left.right = curr.right;
+          }
+
+          // insert into root list and unmark
+          curr.parent = null;
+          curr.lost = false;
+          this.heap.insertIntoRootList(curr);
+
+          if(!par.lost) {
+            par.lost = true;
+            break;
+          }
+
+          // cascade
+          curr = par;
+          par = curr.parent;
+        } while(par != null);
       }
 
       // update min pointer
-      if(comp.compare(newKey, this.heap.min.priority) < 0) {
+      if(comp.compare(newKey, this.heap.min.key) < 0) {
         this.heap.min = this;
       }
     }
 
     @Override
     public String toString() {
-      return "Node[" + this.priority + ", " + this.value + "]";
-    }
-
-    /**
-     * Adds the given child to this node.
-     * @param child child to add
-     */
-    void addChild(final FibNode<V, P> child) {
-      child.parent = this;
-      final FibNode<V, P> fst = this.firstChild;
-      if(fst == null) {
-        this.firstChild = child;
-        child.left = child.right = child;
-      } else {
-        child.left = fst;
-        child.right = fst.right;
-        fst.right.left = child;
-        fst.right = child;
-      }
-      this.degree++;
-    }
-
-    /**
-     * Deletes this node from its parent if one exists.
-     * @return {@code true} if a cascading cut has to be triggered, {@code false} otherwise
-     */
-    private boolean deleteFromParent() {
-      final FibNode<V, P> par = this.parent;
-      this.parent = null;
-      if(this.right == this) {
-        par.firstChild = null;
-      } else {
-        this.right.left = this.left;
-        this.left.right = this.right;
-        if(par.firstChild == this) {
-          par.firstChild = this.right;
-        }
-      }
-      par.degree--;
-      if(par.parent != null) {
-        final boolean cascade = par.lost;
-        par.lost ^= true;
-        return cascade;
-      }
-      return false;
+      return "Node[key=" + this.key + ", value=" + this.value + "]";
     }
   }
 }

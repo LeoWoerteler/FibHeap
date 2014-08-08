@@ -14,33 +14,38 @@ import de.woerteler.fibheap.FibHeap.FibNode;
  * @author Leo Woerteler
  */
 public class DijkstraTest {
-  /** A comparator for {@code double}s. */
-  private static final Comparator<Double> DBL_CMP =
-      new Comparator<Double>() {
-        @Override
-        public int compare(final Double o1, final Double o2) {
-          return o1.compareTo(o2);
-        }
-      };
-
   /** A vertex in a graph. */
   private static class Vertex {
     /** Vertex ID. */
     private final int id;
+    /** Vertex name. */
+    private final String name;
     /** Outgoing edges. */
     private final List<Edge> edges = new ArrayList<>();
 
     /**
      * Constructor.
      * @param id node ID
+     * @param name vertex name
      */
-    private Vertex(final int id) {
+    private Vertex(final int id, final String name) {
       this.id = id;
+      this.name = name;
     }
 
     @Override
     public String toString() {
-      return "v" + (this.id + 1);
+      return this.name;
+    }
+
+    /**
+     * Adds a new undirected edge between this vertex and the given one.
+     * @param other other vertex
+     * @param weight edge weight
+     */
+    void undirEdgeTo(final Vertex other, final double weight) {
+      this.edges.add(new Edge(other, weight));
+      other.edges.add(new Edge(this, weight));
     }
   }
 
@@ -79,14 +84,19 @@ public class DijkstraTest {
      */
     private VertexData(final FibNode<Vertex, Double> fibNode) {
       this.fibNode = fibNode;
-      this.distance = fibNode.getPriority();
+      this.distance = fibNode.getKey();
     }
   }
 
+  /**
+   * Implementation of Dijkstra's single-source-shortest-path apgorithm.
+   * @param start start vertex
+   * @return map from vertices to distance and predecessors
+   */
   private static Map<Vertex, VertexData> dijkstra(final Vertex start) {
     final Map<Vertex, VertexData> dists = new HashMap<>();
 
-    final FibHeap<Vertex, Double> heap = new FibHeap<>(DBL_CMP);
+    final FibHeap<Vertex, Double> heap = FibHeap.newHeap();
     dists.put(start, new VertexData(heap.insert(start, 0.0)));
 
     while(!heap.isEmpty()) {
@@ -118,8 +128,8 @@ public class DijkstraTest {
   @Test
   public void wikipedia() {
     final Vertex[] nodes = {
-        new Vertex(0), new Vertex(1), new Vertex(2),
-        new Vertex(3), new Vertex(4), new Vertex(5)
+        new Vertex(0, "v1"), new Vertex(1, "v2"), new Vertex(2, "v3"),
+        new Vertex(3, "v4"), new Vertex(4, "v5"), new Vertex(5, "v6")
     };
 
     final int[][] edges = {
@@ -135,9 +145,7 @@ public class DijkstraTest {
     };
 
     for(final int[] e : edges) {
-      final Vertex s = nodes[e[0] - 1], t = nodes[e[1] - 1];
-      s.edges.add(new Edge(t, e[2]));
-      t.edges.add(new Edge(s, e[2]));
+      nodes[e[0] - 1].undirEdgeTo(nodes[e[1] - 1], e[2]);
     }
 
     final int[][] dists = {
@@ -154,6 +162,59 @@ public class DijkstraTest {
       assertEquals(6, res.size());
       for(final Entry<Vertex, VertexData> e : res.entrySet()) {
         assertEquals(dists[v.id][e.getKey().id], Math.round(e.getValue().distance));
+      }
+    }
+  }
+
+  /** An example graph consisting of cities in southern Germany. */
+  @Test
+  public void southernGermany() {
+    final Vertex frankfurt = new Vertex(0, "Frankfurt");
+    final Vertex mannheim  = new Vertex(1, "Mannheim");
+    final Vertex wuerzburg = new Vertex(2, "Würzburg");
+    final Vertex stuttgart = new Vertex(3, "Stuttgart");
+    final Vertex kassel    = new Vertex(4, "Kassel");
+    final Vertex karlsruhe = new Vertex(5, "Karlsruhe");
+    final Vertex erfurt    = new Vertex(6, "Erfurt");
+    final Vertex nuernberg = new Vertex(7, "Nürnberg");
+    final Vertex augsburg  = new Vertex(8, "Augsburg");
+    final Vertex muenchen  = new Vertex(9, "München");
+    final Vertex[] vertices = {
+      frankfurt, mannheim, wuerzburg, stuttgart, kassel,
+      karlsruhe, erfurt,   nuernberg, augsburg,  muenchen
+    };
+
+    final int[][] dist = {
+      {   0,  85, 217, 503,  85, 165, 403, 320, 415, 487 },
+      {  85,   0, 302, 588, 170,  80, 488, 405, 330, 414 },
+      { 217, 302,   0, 286, 302, 382, 186, 103, 354, 270 },
+      { 503, 588, 286,   0, 588, 668, 472, 183, 434, 350 },
+      {  85, 170, 302, 588,   0, 250, 488, 405, 500, 502 },
+      { 165,  80, 382, 668, 250,   0, 568, 485, 250, 334 },
+      { 403, 488, 186, 472, 488, 568,   0, 289, 540, 456 },
+      { 320, 405, 103, 183, 405, 485, 289,   0, 251, 167 },
+      { 415, 330, 354, 434, 500, 250, 540, 251,   0,  84 },
+      { 487, 414, 270, 350, 502, 334, 456, 167,  84,   0 }
+    };
+
+    frankfurt.undirEdgeTo(mannheim, 85);
+    frankfurt.undirEdgeTo(wuerzburg, 217);
+    frankfurt.undirEdgeTo(kassel, 85);
+    mannheim.undirEdgeTo(karlsruhe, 80);
+    wuerzburg.undirEdgeTo(erfurt, 186);
+    wuerzburg.undirEdgeTo(nuernberg, 103);
+    stuttgart.undirEdgeTo(nuernberg, 183);
+    kassel.undirEdgeTo(muenchen, 502);
+    karlsruhe.undirEdgeTo(augsburg, 250);
+    nuernberg.undirEdgeTo(muenchen, 167);
+    augsburg.undirEdgeTo(muenchen, 84);
+
+    for(final Vertex v : vertices) {
+      final Map<Vertex, VertexData> res = dijkstra(v);
+      for(final Entry<Vertex, VertexData> e : res.entrySet()) {
+        final Vertex w = e.getKey();
+        final VertexData data = e.getValue();
+        assertEquals(dist[v.id][w.id], (int) data.distance);
       }
     }
   }

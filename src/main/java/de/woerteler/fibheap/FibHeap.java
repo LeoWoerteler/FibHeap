@@ -71,12 +71,12 @@ public final class FibHeap<V, P> {
    * @return the inserted entry
    */
   public FibNode<V, P> insert(final V v, final P k) {
-    final FibNode<V, P> nd = new FibNode<>(this, k, v);
-    this.insertIntoRootList(nd);
-    if(nd != this.min && this.comp.compare(nd.key, this.min.key) < 0) {
-      this.min = nd;
+    final FibNode<V, P> node = new FibNode<>(this, k, v);
+    this.insertIntoRootList(node);
+    if(node != this.min && this.comp.compare(node.key, this.min.key) < 0) {
+      this.min = node;
     }
-    return nd;
+    return node;
   }
 
   /**
@@ -141,42 +141,11 @@ public final class FibHeap<V, P> {
       sb.append('\n');
       FibNode<V, P> curr = this.min;
       do {
-        toString(curr, sb, 1);
+        curr.toString(sb, 1);
         curr = curr.right;
       } while(curr != this.min);
     }
     return sb.append(']').toString();
-  }
-
-  /**
-   * Recursive helper for {@link #toString()}.
-   * @param node current node
-   * @param sb string builder
-   * @param indent indentation level
-   */
-  private void toString(final FibNode<V, P> node, final StringBuilder sb, final int indent) {
-    for(int i = 0; i < indent; i++) {
-      sb.append("  ");
-    }
-    sb.append("Node").append(node.lost ? "'" : "").append('#').append(node.degree).append("[\n");
-    for(int i = 0; i <= indent; i++) {
-      sb.append("  ");
-    }
-    sb.append('(').append(node.key).append(", ").append(node.value).append(")");
-    if(node.firstChild == null) {
-      sb.append("\n");
-    } else {
-      sb.append(",\n");
-      FibNode<V, P> curr = node.firstChild;
-      do {
-        toString(curr, sb, indent + 1);
-        curr = curr.right;
-      } while(curr != node.firstChild);
-    }
-    for(int i = 0; i < indent; i++) {
-      sb.append("  ");
-    }
-    sb.append("]\n");
   }
 
   /**
@@ -281,7 +250,7 @@ public final class FibHeap<V, P> {
     FibNode<V, P> right = this;
 
     /** Flag for nodes that already lost a child. */
-    boolean lost;
+    private boolean lost;
     /** Number of children. */
     int degree;
 
@@ -378,6 +347,36 @@ public final class FibHeap<V, P> {
     @Override
     public String toString() {
       return "Node[key=" + this.key + ", value=" + this.value + "]";
+    }
+
+    /**
+     * Recursive helper for {@link FibHeap#toString()}.
+     * @param sb string builder
+     * @param indent indentation level
+     */
+    private void toString(final StringBuilder sb, final int indent) {
+      for(int i = 0; i < indent; i++) {
+        sb.append("  ");
+      }
+      sb.append("Node").append(this.lost ? "'" : "").append('#').append(this.degree).append("[\n");
+      for(int i = 0; i <= indent; i++) {
+        sb.append("  ");
+      }
+      sb.append('(').append(this.key).append(", ").append(this.value).append(")");
+      if(this.firstChild == null) {
+        sb.append("\n");
+      } else {
+        sb.append(",\n");
+        FibNode<V, P> curr = this.firstChild;
+        do {
+          curr.toString(sb, indent + 1);
+          curr = curr.right;
+        } while(curr != this.firstChild);
+      }
+      for(int i = 0; i < indent; i++) {
+        sb.append("  ");
+      }
+      sb.append("]\n");
     }
   }
 }

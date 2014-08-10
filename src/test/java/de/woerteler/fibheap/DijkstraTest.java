@@ -86,10 +86,15 @@ public class DijkstraTest {
       this.fibNode = fibNode;
       this.distance = fibNode.getKey();
     }
+
+    @Override
+    public String toString() {
+      return "VertexData{distance=" + this.distance + ", predecessors=" + this.predecessors + "}";
+    }
   }
 
   /**
-   * Implementation of Dijkstra's single-source-shortest-path apgorithm.
+   * Implementation of Dijkstra's single-source-shortest-paths algorithm.
    * @param start start vertex
    * @return map from vertices to distance and predecessors
    */
@@ -119,12 +124,14 @@ public class DijkstraTest {
         VertexData dataT = dists.get(t);
         if(dataT == null) {
           dataT = new VertexData(heap.insert(t, newDist));
-          dataT.predecessors.add(s);
           dists.put(t, dataT);
         } else if(!dataT.closed && newDist < dataT.distance) {
           dataT.distance = newDist;
           dataT.fibNode.decreaseKey(newDist);
           dataT.predecessors.clear();
+        }
+
+        if(dataT.distance == newDist) {
           dataT.predecessors.add(s);
         }
       }
@@ -132,44 +139,63 @@ public class DijkstraTest {
     return dists;
   }
 
+  /**
+   * Implementation of Floyd & Warshall's all-pairs-shortest-paths algorithm.
+   * @param vs the graph
+   * @return distance matrix
+   */
+  private static double[][] floydWarshall(final Vertex[] vs) {
+    final double[][] dists = new double[vs.length][vs.length];
+    for(int i = 0; i < vs.length; i++) {
+      Arrays.fill(dists[i], Double.POSITIVE_INFINITY);
+      dists[i][i] = 0;
+      for(final Edge e : vs[i].edges) {
+        dists[i][e.target.id] = e.weight;
+      }
+    }
+
+    for(int v = 0; v < vs.length; v++) {
+      for(int s = 0; s < vs.length; s++) {
+        for(int t = 0; t < vs.length; t++) {
+          dists[s][t] = Math.min(dists[s][t], dists[s][v] + dists[v][t]);
+        }
+      }
+    }
+
+    return dists;
+  }
+
   /** Checks the correctness of Dijkstra's algorithm on a small example from Wikipedia.  */
   @Test
   public void wikipedia() {
     final Vertex[] nodes = {
-        new Vertex(0, "v1"), new Vertex(1, "v2"), new Vertex(2, "v3"),
-        new Vertex(3, "v4"), new Vertex(4, "v5"), new Vertex(5, "v6")
+      new Vertex(0, "v1"), new Vertex(1, "v2"), new Vertex(2, "v3"),
+      new Vertex(3, "v4"), new Vertex(4, "v5"), new Vertex(5, "v6")
     };
 
     final int[][] edges = {
-        { 1, 2,  7 },
-        { 1, 3,  9 },
-        { 1, 6, 14 },
-        { 2, 3, 10 },
-        { 2, 4, 15 },
-        { 3, 4, 11 },
-        { 3, 6,  2 },
-        { 4, 5,  6 },
-        { 5, 6,  9 }
+      { 1, 2,  7 }, { 1, 3,  9 }, { 1, 6, 14 },
+      { 2, 3, 10 }, { 2, 4, 15 },
+      { 3, 4, 11 }, { 3, 6,  2 },
+      { 4, 5,  6 },
+      { 5, 6,  9 }
     };
 
     for(final int[] e : edges) {
       nodes[e[0] - 1].undirEdgeTo(nodes[e[1] - 1], e[2]);
     }
 
-    final int[][] dists = {
-        {  0,  7,  9, 20, 20, 11 },
-        {  7,  0, 10, 15, 21, 12 },
-        {  9, 10,  0, 11, 11,  2 },
-        { 20, 15, 11,  0,  6, 13 },
-        { 20, 21, 11,  6,  0,  9 },
-        { 11, 12,  2, 13,  9,  0 }
-    };
+    final double[][] dists = floydWarshall(nodes);
 
     for(final Vertex v : nodes) {
       final Map<Vertex, VertexData> res = dijkstra(v);
       assertEquals(6, res.size());
       for(final Entry<Vertex, VertexData> e : res.entrySet()) {
-        assertEquals(dists[v.id][e.getKey().id], Math.round(e.getValue().distance));
+        final Vertex w = e.getKey();
+        final VertexData data = e.getValue();
+        assertEquals(dists[v.id][w.id], data.distance, 0);
+        assertEquals(v.id == w.id ? 0 : v.id == 1 && w.id == 4 || v.id == 4 && w.id == 1 ? 2 : 1,
+            data.predecessors.size());
       }
     }
   }
@@ -187,22 +213,10 @@ public class DijkstraTest {
     final Vertex nuernberg = new Vertex(7, "Nürnberg");
     final Vertex augsburg  = new Vertex(8, "Augsburg");
     final Vertex muenchen  = new Vertex(9, "München");
+
     final Vertex[] vertices = {
       frankfurt, mannheim, wuerzburg, stuttgart, kassel,
       karlsruhe, erfurt,   nuernberg, augsburg,  muenchen
-    };
-
-    final int[][] dist = {
-      {   0,  85, 217, 503,  85, 165, 403, 320, 415, 487 },
-      {  85,   0, 302, 588, 170,  80, 488, 405, 330, 414 },
-      { 217, 302,   0, 286, 302, 382, 186, 103, 354, 270 },
-      { 503, 588, 286,   0, 588, 668, 472, 183, 434, 350 },
-      {  85, 170, 302, 588,   0, 250, 488, 405, 500, 502 },
-      { 165,  80, 382, 668, 250,   0, 568, 485, 250, 334 },
-      { 403, 488, 186, 472, 488, 568,   0, 289, 540, 456 },
-      { 320, 405, 103, 183, 405, 485, 289,   0, 251, 167 },
-      { 415, 330, 354, 434, 500, 250, 540, 251,   0,  84 },
-      { 487, 414, 270, 350, 502, 334, 456, 167,  84,   0 }
     };
 
     frankfurt.undirEdgeTo(mannheim, 85);
@@ -217,12 +231,14 @@ public class DijkstraTest {
     nuernberg.undirEdgeTo(muenchen, 167);
     augsburg.undirEdgeTo(muenchen, 84);
 
+    final double[][] dist = floydWarshall(vertices);
+
     for(final Vertex v : vertices) {
       final Map<Vertex, VertexData> res = dijkstra(v);
       for(final Entry<Vertex, VertexData> e : res.entrySet()) {
         final Vertex w = e.getKey();
         final VertexData data = e.getValue();
-        assertEquals(dist[v.id][w.id], (int) data.distance);
+        assertEquals(dist[v.id][w.id], data.distance, 0);
       }
     }
   }
